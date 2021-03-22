@@ -8,6 +8,9 @@ const getters = {
   getSongList(state) {
     return state.songList;
   },
+  getFavoriteSongsList(state) {
+    return state.favoriteSongs;
+  },
 };
 
 export default getters;

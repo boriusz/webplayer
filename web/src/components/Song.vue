@@ -5,12 +5,35 @@
     @mouseout="isHover = false"
   >
     <div class="album-name">{{ albumName }}</div>
-    <div class="song-name">{{ songName }}</div>
+    <div class="song-name">{{ songName.replace(/.mp3/, "") }}</div>
     <div class="song-size">
       {{ Math.round((size / 1024 / 1024) * 100) / 100 }}MB
     </div>
-    <div class="song-play" @click="handlePlay" v-show="isHover">
-      {{ this.$store.getters.getIsPlaying && isActive ? "Stop" : "Play" }}
+    <div class="hoverable" v-show="isHover">
+      <div class="song-play" @click="handlePlayPause">
+        {{ this.$store.getters.getIsPlaying && isActive ? "Stop" : "Play" }}
+      </div>
+      <div
+        v-if="
+          !this.$store.getters.getFavoriteSongsList.find(
+            (el) =>
+              el.songName === songName &&
+              el.artist === artist &&
+              el.albumName === albumName
+          )
+        "
+        class="add-to-favorite"
+        @click="handleAddToFavorites"
+      >
+        Add
+      </div>
+      <div
+        v-else
+        class="add-to-favorite"
+        @click="handleRemoveFromFavorities"
+      >
+        Remove
+      </div>
     </div>
   </div>
 </template>
@@ -18,7 +41,7 @@
 <script>
 export default {
   name: "Song",
-  emits: ["activate"],
+  emits: ["songChanged"],
   props: ["songName", "albumName", "size", "artist"],
   data() {
     return {
@@ -31,40 +54,69 @@ export default {
     this.audio = document.querySelector("#audio");
   },
   methods: {
-    handlePlay() {
-      const currSongPlaying = this.$store.getters.getCurrentlyPlayingSong
-      if (this.$store.getters.getIsPlaying && currSongPlaying?.songName === this.songName) {
-        this.audio.pause()
-        this.$store.dispatch('setIsPlaying', {isPlaying: false})
-        return
+    handlePlayPause() {
+      const currSongPlaying = this.$store.getters.getCurrentlyPlayingSong;
+      const isPlaying = this.$store.getters.getIsPlaying;
+
+      if (isPlaying && currSongPlaying?.songName === this.songName) {
+        this.$store.dispatch("setIsPlaying", { isPlaying: false });
+        this.audio.pause();
+        return;
       }
-      if (!this.$store.getters.getIsPlaying && currSongPlaying?.songName === this.songName) {
-        this.audio.play()
-        this.$store.dispatch('setIsPlaying', {isPlaying: true})
-        return
+      if (!isPlaying && currSongPlaying?.songName === this.songName) {
+        this.$store.dispatch("setIsPlaying", { isPlaying: true });
+        this.audio.play();
+        return;
       }
-      this.$store.dispatch("setCurrentlyPlayingSong", {
-        songName: this.songName,
-        albumName: this.albumName,
-        artist: this.artist,
-        playing: true,
-      });
-      const { artist, albumName, songName } = this;
-      const songList = this.$store.getters.getSongList;
-      const currSongId = songList.findIndex((song) => {
-        if (
+      this.$emit("songChanged", this);
+    },
+    async handleAddToFavorites() {
+      const { albumName, songName, artist, size } = this;
+      const songData = { albumName, songName, artist, size };
+      const favoriteSongs = this.$store.getters.getFavoriteSongsList;
+      const isAlreadyFavorite = favoriteSongs.find(
+        (song) =>
           song.albumName === albumName &&
           song.artist === artist &&
           song.songName === songName
-        ) {
-          return true;
-        }
+      );
+      if (isAlreadyFavorite) {
+        await this.handleRemoveFromFavorities();
+        return;
+      }
+      favoriteSongs.push({
+        albumName,
+        artist,
+        songName,
+        songSize: size
       });
-      this.audio.children[0].src = `http://192.168.1.8:4000/${this.artist}/${this.albumName}/${this.songName}`;
-      this.$store.dispatch("setIsPlaying", { isPlaying: true });
-      this.$emit("songChanged", { songName, albumName, artist, currSongId });
-      this.audio.load()
-      this.audio.play();
+      await this.$store.dispatch("setFavoriteSongs", favoriteSongs);
+      const body = JSON.stringify({ data: songData });
+      await fetch("http://192.168.1.8:4000/addToFavorites", {
+        method: "POST",
+        body,
+      });
+    },
+    async handleRemoveFromFavorities() {
+      let reload = false
+      const { albumName, songName, artist } = this;
+      const songData = { albumName, songName, artist };
+      if (this.$store.getters.getFavoriteSongsList === this.$store.getters.getSongList) {
+        reload = true
+      }
+      const body = JSON.stringify({ data: songData });
+      const favoriteSongs = await this.$store.getters.getFavoriteSongsList;
+      const filteredSongs = favoriteSongs.filter((item) =>
+        item.songName !== songName
+      );
+      await this.$store.dispatch("setFavoriteSongs", filteredSongs);
+      await fetch("http://192.168.1.8:4000/removeFromFavorities", {
+        method: "POST",
+        body,
+      });
+      if (reload) {
+        await this.$store.dispatch('setSongList', {id: -1})
+      }
     },
   },
 };
@@ -85,6 +137,12 @@ export default {
   flex-wrap: wrap;
 }
 
+.hoverable {
+  display: flex;
+  justify-content: space-between;
+  flex-basis: 10%;
+}
+
 .song-active {
   background: blue;
   color: white;
@@ -96,9 +154,10 @@ export default {
 
 .song-name {
   flex-basis: 30%;
+  text-align: left;
 }
 
 .song-size {
-  flex-basis: 30%;
+  flex-basis: 20%;
 }
 </style>

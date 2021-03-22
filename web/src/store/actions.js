@@ -6,7 +6,12 @@ const actions = {
   setIsPlaying({ commit }, { isPlaying }) {
     commit("PLAYING_MUTATION", isPlaying);
   },
-  async setSongList({ commit }, { id }) {
+  async setSongList({ commit, state }, { id }) {
+    if (id === -1) {
+      const parsedData = state.favoriteSongs;
+      commit("SONGLIST_MUTATION", { parsedData });
+      return;
+    }
     const response = await fetch("http://192.168.1.8:4000/songlist", {
       method: "POST",
       body: id,
@@ -16,6 +21,9 @@ const actions = {
   },
   setFixedSongList({ commit }, { parsedData }) {
     commit("SONGLIST_MUTATION", { parsedData });
+  },
+  setFavoriteSongs({ commit }, songList) {
+    commit("FAVORITE_SONGS_MUTATION", songList);
   },
 };
 

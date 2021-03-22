@@ -14,5 +14,6 @@ const state = {
     artist: "",
   },
   isPlaying: false,
+  favoriteSongs: [],
 };
 export default state;

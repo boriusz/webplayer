@@ -1,10 +1,15 @@
 <template>
   <div id="app">
-    <audio id="audio" controls onended="handleEnd"><source id="audio-source"></audio>
-    <header>Music Player</header>
+    <audio ref="audio" id="audio" type="audio" controls><source type="audio/mp3" id="audio-source" /></audio>
+    <header>
+      <nav style="height: 100%">
+        <Navigation @loadFavorites="loadSongs(-1)"></Navigation>
+      </nav>
+    </header>
     <section id="main">
       <div id="cover-wrapper">
         <Cover
+            class="cover"
           v-for="item in covers"
           @coverClick="loadSongs"
           v-bind:key="item.id"
@@ -26,7 +31,7 @@
       </div>
     </section>
     <footer>
-      <Player @songChanged="handleSongChange"></Player>
+      <Player ref="player" @songChanged="handleSongChange"></Player>
     </footer>
   </div>
 </template>
@@ -35,10 +40,12 @@
 import Cover from "@/components/Cover";
 import Song from "@/components/Song";
 import Player from "@/components/Player";
+import Navigation from "@/components/Navigation";
 
 export default {
   name: "App",
   components: {
+    Navigation,
     Player,
     Cover,
     Song,
@@ -52,57 +59,81 @@ export default {
   async mounted() {
     const response = await fetch(`http://192.168.1.8:${4000}`);
     const parsedResponse = await response.json();
-    const {data, responseData} = parsedResponse
+    const { data, responseData } = parsedResponse;
     data.forEach((el) => {
       this.covers.push({
         id: el.albumId,
         albumName: el.albumName,
         cover: el.albumCover,
-        artist: el.artist
+        artist: el.artist,
       });
     });
-    await this.$store.dispatch('setFixedSongList', { parsedData: responseData })
-    this.handleSongChange({currSongId: -1})
+    await this.$store.dispatch("setFixedSongList", {
+      parsedData: responseData,
+    });
+    await this.handleSongChange({ currSongId: -1 });
+
+    const favoriteSongs = await fetch(`http://192.168.1.8:4000/favorites`)
+    const parsedFavoriteSongs = await favoriteSongs.json()
+    await this.$store.dispatch('setFavoriteSongs', parsedFavoriteSongs )
   },
 
   methods: {
     async loadSongs(id) {
-      await this.$store.dispatch('setSongList', {id})
-      this.handleSongChange({currSongId: -1})
+      await this.$store.dispatch("setSongList", { id });
+      await this.handleSongChange({ currSongId: -1 });
     },
-    handleSongChange({currSongId}) {
-      this.$refs.song.forEach(song => {
-        song.isActive = false
-      })
-      if (currSongId !== -1) {
-        this.$refs.song[currSongId].isActive = true
-        return
-      }
-      const songList = this.$store.getters.getSongList
-      const currSong = this.$store.getters.getCurrentlyPlayingSong
-      const songId = songList.findIndex(item => {
-        if (item.songName === currSong.songName && item.artist === currSong.artist && item.albumName === currSong.albumName) {
-          return true
-        }
-      })
-      if (songId === -1) {
-        return
-      }
-      this.$refs.song[songId].isActive = true
-    },
-    handleEnd() {
-      console.log('ended')
-    }
-  },
+    async handleSongChange(data) {
+      const { artist, albumName, songName } = data;
+      if (artist && albumName && songName) {
+        await this.$store.dispatch("setCurrentlyPlayingSong", {
+          songName: songName,
+          albumName: albumName,
+          artist: artist,
+          playing: true,
+        });
+        this.$refs.audio.children[0].src = `http://192.168.1.8:4000/${artist}/${albumName}/${songName}`;
+        await this.$store.dispatch("setIsPlaying", { isPlaying: true });
 
+        this.$refs.audio.load();
+        this.$refs.audio.onloadeddata = (e) => {
+          this.$refs.player.setSongTime(this.$refs.audio.duration)
+          e.target.play();
+          this.songTime = Math.floor(e.target.duration)
+          e.target.ontimeupdate = (e) => {
+            this.currentSongTime = Math.floor(e.target.currentTime)
+          };
+        };
+      }
+      const songList = this.$store.getters.getSongList;
+      const currentlyPlayingSong = this.$store.getters.getCurrentlyPlayingSong
+      const currSongId = songList.findIndex(
+          (song) =>
+              song.albumName === currentlyPlayingSong.albumName &&
+              song.artist === currentlyPlayingSong.artist &&
+              song.songName === currentlyPlayingSong.songName
+      );
+      this.$refs.song.forEach((song) => {
+        song.isActive = false;
+      });
+      if (currSongId !== -1) {
+        this.$refs.song[currSongId].isActive = true;
+      }
+    },
+  },
 };
 </script>
 
 <style>
+::-webkit-scrollbar {
+  width: 0;
+  background: transparent;
+}
 body {
   margin: 0;
   padding: 0;
   height: 100vh;
+  background: rgba(0, 0, 0, .8);
 }
 
 #app {
@@ -141,9 +172,10 @@ footer {
   height: 10vh;
 }
 header {
-  background: tomato;
+  background: darkslategrey;
+  color: tomato;
   display: flex;
-  justify-content: center;
+  justify-content: flex-end;
   align-items: center;
   height: 10vh;
 }
@@ -153,9 +185,45 @@ section {
   flex-direction: row;
   height: 80vh;
   width: 100%;
+  color: white;
   flex-grow: 0;
   align-items: flex-start;
   justify-content: center;
+}
 
+@media (max-width: 680px) {
+ section {
+   display: flex;
+   flex-direction: column;
+   height: 80vh;
+   width: 100%;
+   color: white;
+   flex-grow: 0;
+   align-items: flex-start;
+   justify-content: center;
+ }
+  #cover-wrapper {
+    flex-basis: auto;
+    display: flex;
+    flex-direction: row;
+    height: 100%;
+    flex-wrap: nowrap;
+    position: relative;
+    overflow-x: scroll;
+  }
+  .cover {
+    width: 100%;
+    flex-shrink: 0;
+  }
+  @media (max-width: 680px) {
+    #songs-container {
+      display: flex;
+      justify-content: center;
+      flex-direction: column;
+      padding-top: 10px;
+      width: 100%;
+      flex-basis: 100%;
+    }
+  }
 }
 </style>

@@ -1,11 +1,20 @@
-const http = require("http");
-const fs = require("fs");
-const path = require("path");
+import http, { IncomingMessage, ServerResponse } from "http";
+import fs from "fs";
+import path from "path";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore
+import Datastore from "nedb";
+import DatabaseController, {
+  DatabaseDataInterface,
+} from "./DatabaseController";
 const PORT = process.env.PORT || 4000;
 
 const fsPromises = fs.promises;
 
-import { IncomingMessage, ServerResponse } from "http";
+export const collection = new Datastore({
+  filename: "favorites.db",
+  autoload: true,
+});
 
 interface AlbumInterface {
   artist: string;
@@ -13,12 +22,6 @@ interface AlbumInterface {
   albumName: string;
   songList: string[] | null;
   albumCover: string;
-}
-
-interface AudioFileProps {
-  artist: string;
-  albumName: string;
-  songName: string;
 }
 
 const readDirectory = async (filePath: string[]) => {
@@ -35,22 +38,25 @@ const readDirectory = async (filePath: string[]) => {
         bandId + "" + albumsList.findIndex((el: string) => el === album);
       const albumDirectory: string = path.join(pathToDir, band, album);
       const albumFiles: string[] = await fsPromises.readdir(albumDirectory);
-      const [albumCover, ...rest] = albumFiles.reverse();
-      const albumData: AlbumInterface = {
-        artist: band,
-        albumId: Number(albumId),
-        albumName: album,
-        songList: rest.reverse(),
-        albumCover,
-      };
-      data.push(albumData);
+      const songs = albumFiles.filter((item) => /.mp3$/.test(item));
+      const albumCover = albumFiles.find((item) => /.png$/.test(item));
+      if (albumCover) {
+        const albumData: AlbumInterface = {
+          artist: band,
+          albumId: Number(albumId),
+          albumName: album,
+          songList: songs,
+          albumCover,
+        };
+        data.push(albumData);
+      }
     }
   }
   return data;
 };
 
-const readImage = async (filePath: string[]) => {
-  return await fsPromises.readFile(
+const readImage = async (filePath: string[]) =>
+  await fsPromises.readFile(
     path.join(
       __dirname,
       "../",
@@ -61,11 +67,17 @@ const readImage = async (filePath: string[]) => {
       decodeURIComponent(filePath[3])
     )
   );
+const readFileSize = async (filePath: string) => {
+  const file = await fsPromises.stat(filePath);
+  return file.size;
 };
 
-const readFileSize = async (albumsList: AlbumInterface[], albumId: number) => {
-  const album = albumsList.find((el) => el.albumId === albumId);
-  if (!album) return;
+const readAlbumFilesSize = async (
+  albumsList: AlbumInterface[],
+  albumId: number
+) => {
+  const album = albumsList.find((el: AlbumInterface) => el.albumId === albumId);
+  if (!album) return null;
   const pathToDir = path.join(
     __dirname,
     "../",
@@ -75,7 +87,7 @@ const readFileSize = async (albumsList: AlbumInterface[], albumId: number) => {
     album.albumName
   );
   const responseData = [];
-  if (!album.songList) return;
+  if (!album.songList) return null;
   for (const song of album.songList) {
     const stat = await fsPromises.stat(path.join(pathToDir, song));
     const id = song.slice(0, 2);
@@ -88,19 +100,6 @@ const readFileSize = async (albumsList: AlbumInterface[], albumId: number) => {
     });
   }
   return responseData;
-};
-
-const readAudioFile = async (audioFile: AudioFileProps) => {
-  const pathToFile = path.join(
-    __dirname,
-    "../",
-    "static",
-    "music",
-    audioFile.artist,
-    audioFile.albumName,
-    audioFile.songName
-  );
-  return await fsPromises.readFile(pathToFile);
 };
 
 const readInitialData = async (filePath: string[]) => {
@@ -133,7 +132,7 @@ const readInitialData = async (filePath: string[]) => {
 
 const server = http.createServer(
   async (req: IncomingMessage, res: ServerResponse) => {
-    const splitUrl = req.url?.split("/")!;
+    const splitUrl = req.url!.split("/")!;
     const lastone = splitUrl[splitUrl.length - 1];
     if (/.png$/.test(lastone)) {
       res.writeHead(200, { "Content-Type": "image/png" });
@@ -150,37 +149,114 @@ const server = http.createServer(
         res.writeHead(200, { "Content-Type": "application/json" });
         const data = await readInitialData(["/static", "music"]);
         const albumsList = await readDirectory(["/static", "music"]);
-        const responseData = await readFileSize(albumsList, 0);
+        const responseData = await readAlbumFilesSize(albumsList, 0);
         res.write(JSON.stringify({ data, responseData }));
         res.end();
         return;
       }
+      if (req.url === "/favorites") {
+        res.writeHead(200, { "Content-Type": "application/json" });
+        collection.find(
+          {},
+          async (err: Error | null, docs: DatabaseDataInterface[]) => {
+            if (err) console.log(err);
+            const songsWithSizes = await Promise.all(
+              docs.map(async (element: DatabaseDataInterface) => {
+                const pathToElem = path.join(
+                  __dirname,
+                  "../",
+                  "static",
+                  "music",
+                  element.artist,
+                  element.albumName,
+                  element.songName
+                );
+                const fileSize = await readFileSize(pathToElem);
+                return { ...element, songSize: fileSize };
+              })
+            );
+            res.write(JSON.stringify(songsWithSizes));
+            res.end();
+          }
+        );
+      }
       if (/.mp3$/.test(lastone)) {
-        console.log("mp3 audio");
-        const audioSource: AudioFileProps = {
-          artist: decodeURIComponent(splitUrl[1]),
-          albumName: decodeURIComponent(splitUrl[2]),
-          songName: decodeURIComponent(splitUrl[3]),
-        };
-        res.writeHead(200, { "Content-Type": "audio/mpeg" });
-        res.write(await readAudioFile(audioSource));
+        const pathToFile = path.join(
+          __dirname,
+          "../",
+          "static",
+          "music",
+          decodeURIComponent(splitUrl[1]),
+          decodeURIComponent(splitUrl[2]),
+          decodeURIComponent(splitUrl[3])
+        );
+        const range = req.headers.range;
+        const fileSize = await readFileSize(pathToFile);
+
+        if (range) {
+          const [first, last] = range.replace(/bytes=/, "").split("-");
+          const start = parseInt(first, 10);
+          const end = last ? parseInt(last, 10) : fileSize - 1;
+          res.writeHead(206, {
+            "Content-Type": "audio/mpeg",
+            "Content-Range": `bytes ${start}-${end}/${fileSize}`,
+            "Accept-Ranges": "bytes",
+            "Content-Length": end - start + 1,
+          });
+          const file = fs.createReadStream(pathToFile, {
+            start,
+            end,
+          });
+          file.pipe(res);
+        } else {
+          res.writeHead(200, {
+            "Content-Type": "audio/mpeg",
+            "Content-Length": await readFileSize(pathToFile),
+          });
+          const file = fs.createReadStream(pathToFile);
+          file.pipe(res);
+        }
       }
     } else if (req.method === "POST") {
       if (req.url === "/songlist") {
-        let clientData: any[] = [];
+        let clientData: never[] = [];
         let albumId: number;
         req.on("data", (chunk) => {
           clientData = chunk;
         });
-        req.on("end", async (_: any) => {
+        req.on("end", async () => {
           albumId = Number(clientData.toString());
           const albumsList = await readDirectory(["/static", "music"]);
-          const responseData = await readFileSize(albumsList, albumId);
+          const responseData = await readAlbumFilesSize(albumsList, albumId);
           res.writeHead(200, { "Content-Type": "application/json" });
           res.write(JSON.stringify(responseData));
           res.end();
         });
         return;
+      }
+      if (req.url === "/addToFavorites") {
+        const data: Buffer[] = [];
+        req.on("data", (chunk) => data.push(chunk));
+        req.on("end", () => {
+          const sentData = JSON.parse(data.toString()).data;
+          DatabaseController.addToFavorites(sentData);
+        });
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.write(JSON.stringify("ok"));
+        res.end();
+        return;
+      }
+      if (req.url === "/removeFromFavorities") {
+        const data: Buffer[] = [];
+        req.on("data", (chunk) => data.push(chunk));
+        req.on("end", () => {
+          const sentData = JSON.parse(data.toString());
+          console.log(sentData);
+          DatabaseController.removeFromFavorites(sentData.data);
+        });
+        res.writeHead(200, { "Content-Type": "application/json" });
+        res.write(JSON.stringify("ok"));
+        res.end();
       }
     }
   }

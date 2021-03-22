@@ -6,7 +6,12 @@ const mutations = {
     state.isPlaying = isPlaying;
   },
   SONGLIST_MUTATION(state, data) {
+    console.log(data.parsedData);
     state.songList = data.parsedData;
+    console.log(state.songList);
+  },
+  FAVORITE_SONGS_MUTATION(state, songList) {
+    state.favoriteSongs = songList;
   },
 };
 
