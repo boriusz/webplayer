@@ -135,6 +135,7 @@ export default {
   flex-direction: row;
   justify-content: flex-start;
   flex-wrap: wrap;
+
 }
 
 .hoverable {

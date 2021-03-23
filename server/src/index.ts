@@ -39,7 +39,9 @@ const readDirectory = async (filePath: string[]) => {
       const albumDirectory: string = path.join(pathToDir, band, album);
       const albumFiles: string[] = await fsPromises.readdir(albumDirectory);
       const songs = albumFiles.filter((item) => /.mp3$/.test(item));
-      const albumCover = albumFiles.find((item) => /.png$/.test(item));
+      let albumCover = albumFiles.find((item) => /.png$/.test(item));
+      if (!albumCover)
+        albumCover = albumFiles.find((item: string) => /.jpg/.test(item));
       if (albumCover) {
         const albumData: AlbumInterface = {
           artist: band,
@@ -136,6 +138,12 @@ const server = http.createServer(
     const lastone = splitUrl[splitUrl.length - 1];
     if (/.png$/.test(lastone)) {
       res.writeHead(200, { "Content-Type": "image/png" });
+      res.write(await readImage(splitUrl));
+      res.end();
+      return;
+    }
+    if (/.jpg$/.test(lastone)) {
+      res.writeHead(200, { "Content-Type": "image/jpeg" });
       res.write(await readImage(splitUrl));
       res.end();
       return;

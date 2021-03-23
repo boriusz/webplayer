@@ -163,6 +163,7 @@ body {
 #songs-container {
   flex-basis: 75%;
   display: flex;
+  justify-content: flex-start;
   flex-direction: column;
   height: 100%;
   overflow-y: scroll;
@@ -218,7 +219,6 @@ section {
   @media (max-width: 680px) {
     #songs-container {
       display: flex;
-      justify-content: center;
       flex-direction: column;
       padding-top: 10px;
       width: 100%;
