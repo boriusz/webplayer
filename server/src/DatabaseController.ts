@@ -29,9 +29,7 @@ export default class DatabaseController {
         songName: dataToRemove.songName,
         artist: dataToRemove.artist,
       },
-      () => {
-        console.log("removed");
-      }
+      () => {}
     );
   }
 }

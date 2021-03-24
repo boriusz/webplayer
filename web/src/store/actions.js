@@ -13,6 +13,7 @@ const actions = {
       return;
     }
     const response = await fetch("http://192.168.1.8:4000/songlist", {
+      headers: { "Content-Type": "application/json" },
       method: "POST",
       body: id,
     });

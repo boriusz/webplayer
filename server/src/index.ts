@@ -150,7 +150,7 @@ const server = http.createServer(
     }
     res.setHeader("Access-Control-Allow-Origin", "*");
     res.setHeader("Access-Control-Request-Method", "*");
-    res.setHeader("Access-Control-Allow-Methods", "OPTIONS, GET");
+    res.setHeader("Access-Control-Allow-Methods", "OPTIONS, GET, POST");
     res.setHeader("Access-Control-Allow-Headers", "*");
     if (req.method === "GET") {
       if (req.url === "/") {
@@ -259,13 +259,15 @@ const server = http.createServer(
         req.on("data", (chunk) => data.push(chunk));
         req.on("end", () => {
           const sentData = JSON.parse(data.toString());
-          console.log(sentData);
           DatabaseController.removeFromFavorites(sentData.data);
         });
         res.writeHead(200, { "Content-Type": "application/json" });
         res.write(JSON.stringify("ok"));
         res.end();
       }
+    } else if (req.method === "OPTIONS") {
+      res.writeHead(200);
+      res.end();
     }
   }
 );

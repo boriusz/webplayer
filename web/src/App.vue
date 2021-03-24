@@ -12,9 +12,9 @@
             class="cover"
           v-for="item in covers"
           @coverClick="loadSongs"
-          v-bind:key="item.id"
-          v-bind:id="item.id"
-          v-bind:source="item.artist + '/' + item.albumName + '/' + item.cover"
+          :key="item.id"
+          :id="item.id"
+          :source="item.artist + '/' + item.albumName + '/' + item.cover"
         ></Cover>
       </div>
       <div id="songs-container">
