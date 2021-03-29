@@ -22,7 +22,7 @@
         <div id="song-time-wrapper">
           <div id="timer">
             <div id="song-current-time">{{getMinuteSecondTime(currentSongTime)}}</div>
-            <ProgressBar @skipTo="handleRewind" v-bind:current="currentSongTime" v-bind:max="songTime"></ProgressBar>
+            <ProgressBar @pause="handlePause" @play="handlePlay" @skipTo="handleRewind" v-bind:current="currentSongTime" v-bind:max="songTime"></ProgressBar>
             <div id="song-time">{{ getMinuteSecondTime(songTime) }}</div>
           </div>
         </div>

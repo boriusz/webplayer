@@ -92,7 +92,7 @@ export default {
       });
       await this.$store.dispatch("setFavoriteSongs", favoriteSongs);
       const body = JSON.stringify({ data: songData });
-      await fetch("http://192.168.1.8:4000/addToFavorites", {
+      await fetch("http://localhost:3000/addToFavorites", {
         headers: {'Content-Type': 'application/json'},
         method: "POST",
         body,
@@ -111,7 +111,7 @@ export default {
         item.songName !== songName
       );
       await this.$store.dispatch("setFavoriteSongs", filteredSongs);
-      await fetch("http://192.168.1.8:4000/removeFromFavorities", {
+      await fetch("http://localhost:3000/removeFromFavorities", {
         headers: {'Content-Type': 'application/json'},
         method: "POST",
         body,

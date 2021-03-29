@@ -1,28 +1,21 @@
-import { collection } from "./index";
-
-export interface DatabaseDataInterface {
-  albumName: string;
-  songName: string;
-  artist: string;
-  _id: string;
-}
+import { collection } from "./index.js";
 
 export default class DatabaseController {
-  public static addToFavorites(dataToAdd: DatabaseDataInterface): void {
+  static addToFavorites(dataToAdd) {
     collection.findOne(
       {
         albumName: dataToAdd.albumName,
         artist: dataToAdd.artist,
         songName: dataToAdd.songName,
       },
-      (err: Error | null, data: DatabaseDataInterface[]) => {
+      (err, data) => {
         if (err) console.log(err);
         if (!data) collection.insert(dataToAdd);
       }
     );
   }
 
-  public static removeFromFavorites(dataToRemove: DatabaseDataInterface): void {
+  static removeFromFavorites(dataToRemove) {
     collection.remove(
       {
         albumName: dataToRemove.albumName,

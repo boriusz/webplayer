@@ -12,7 +12,7 @@ const actions = {
       commit("SONGLIST_MUTATION", { parsedData });
       return;
     }
-    const response = await fetch("http://192.168.1.8:4000/songlist", {
+    const response = await fetch("http://localhost:3000/songlist", {
       headers: { "Content-Type": "application/json" },
       method: "POST",
       body: id,

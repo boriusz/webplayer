@@ -13,11 +13,27 @@ export default {
   props: ["current", "max"],
   name: "ProgressBar",
   mounted() {
-    this.$refs.bar.addEventListener("click", (e) => {
-      const clickedMultiplier =
-        ((e.pageX - e.target.offsetLeft) / e.currentTarget.offsetWidth);
-
+    this.$refs.bar.addEventListener("mousedown", (e) => {
+      let clickedMultiplier
+      const wasPlaying = this.$store.getters.getIsPlaying
+      const bar = this.$refs.bar
+      clickedMultiplier =
+          (e.pageX - bar.offsetLeft) / bar.offsetWidth;
       this.$emit("skipTo", clickedMultiplier);
+      this.$emit('pause')
+      document.onmousemove = (e) => {
+        clickedMultiplier =
+          (e.pageX - bar.offsetLeft) / bar.offsetWidth;
+        this.$emit("skipTo", clickedMultiplier);
+      };
+      document.onmouseup = (e) => {
+        clickedMultiplier =
+          (e.pageX - bar.offsetLeft) / bar.offsetWidth;
+        this.$emit("skipTo", clickedMultiplier);
+        if (wasPlaying) this.$emit('play')
+        document.onmousemove = null;
+        document.onmouseup = null
+      };
     });
   },
 };

@@ -11,13 +11,13 @@ export default {
   emits: ['coverClick'],
   data() {
     return {
-      imageSource: `http://192.168.1.8:4000/${this.source}`
+      imageSource: `http://localhost:3000/${this.source}`,
     }
   },
   methods: {
     handleClick() {
       this.$emit('coverClick', this.id)
-    }
+    },
   }
 };
 </script>

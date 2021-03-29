@@ -57,9 +57,9 @@ export default {
     };
   },
   async mounted() {
-    const response = await fetch(`http://192.168.1.8:${4000}`);
+    const response = await fetch(`http://localhost:3000`);
     const parsedResponse = await response.json();
-    const { data, responseData } = parsedResponse;
+    const { data } = parsedResponse;
     data.forEach((el) => {
       this.covers.push({
         id: el.albumId,
@@ -68,12 +68,9 @@ export default {
         artist: el.artist,
       });
     });
-    await this.$store.dispatch("setFixedSongList", {
-      parsedData: responseData,
-    });
-    await this.handleSongChange({ currSongId: -1 });
+    await this.loadSongs(0)
 
-    const favoriteSongs = await fetch(`http://192.168.1.8:4000/favorites`)
+    const favoriteSongs = await fetch(`http://localhost:3000/favorites`)
     const parsedFavoriteSongs = await favoriteSongs.json()
     await this.$store.dispatch('setFavoriteSongs', parsedFavoriteSongs )
   },
@@ -92,7 +89,7 @@ export default {
           artist: artist,
           playing: true,
         });
-        this.$refs.audio.children[0].src = `http://192.168.1.8:4000/${artist}/${albumName}/${songName}`;
+        this.$refs.audio.children[0].src = `http://localhost:3000/${artist}/${albumName}/${songName}`;
         await this.$store.dispatch("setIsPlaying", { isPlaying: true });
 
         this.$refs.audio.load();
