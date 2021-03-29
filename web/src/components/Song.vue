@@ -138,13 +138,14 @@ export default {
   flex-direction: row;
   justify-content: flex-start;
   flex-wrap: wrap;
-
+  margin: .3rem 0;
 }
 
 .hoverable {
   display: flex;
-  justify-content: space-between;
+  justify-content: space-around;
   flex-basis: 10%;
+  flex-grow: 1;
 }
 
 .song-active {
@@ -163,5 +164,19 @@ export default {
 
 .song-size {
   flex-basis: 20%;
+}
+
+@media (max-width: 680px) {
+  .album-name {
+    display: none;
+  }
+  .song-size {
+    display: none;
+  }
+  .song, .song-active {
+    justify-content: flex-start;
+    padding-left: 2rem;
+    margin: .5rem 0;
+  }
 }
 </style>

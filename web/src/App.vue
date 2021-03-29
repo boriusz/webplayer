@@ -218,14 +218,12 @@ section {
     width: 100%;
     flex-shrink: 0;
   }
-  @media (max-width: 680px) {
-    #songs-container {
-      display: flex;
-      flex-direction: column;
-      padding-top: 10px;
-      width: 100%;
-      flex-basis: 100%;
-    }
+  #songs-container {
+    display: flex;
+    flex-direction: column;
+    padding-top: 10px;
+    width: 100%;
+    flex-basis: 100%;
   }
 }
 </style>

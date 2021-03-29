@@ -190,6 +190,7 @@ export default {
 }
 #song-details {
   display: flex;
+  flex-wrap: wrap;
   flex-direction: column;
   flex-basis: 30%;
   align-items: center;
