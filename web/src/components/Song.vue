@@ -118,6 +118,7 @@ export default {
       });
       if (reload) {
         await this.$store.dispatch('setSongList', {id: -1})
+        this.$emit('setActive')
       }
     },
   },

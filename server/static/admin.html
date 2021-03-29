@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="pl_PL">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, user-scalable=no, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0"
+    />
+    <meta http-equiv="X-UA-Compatible" content="ie=edge" />
+    <title>Admin</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+      }
+      #main {
+          width: 100vw;
+          height: 100vh;
+          display: flex;
+          flex-direction: column;
+      }
+
+      #upload {
+          background: white;
+          display: flex;
+          height: 20%;
+          box-shadow: 1px 1px 9px black;
+          justify-content: center;
+          align-items: center;
+          font-size: 26px;
+      }
+
+      #files {
+          display: flex;
+          flex-direction: column;
+          height: 80%;
+          background: blue;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="main">
+        <div id="upload">
+            <h2>Drag files here</h2>
+        </div>
+        <div id="files"></div>
+    </div>
+  <script>
+      const uploadDiv = document.querySelector('#upload')
+      uploadDiv.ondragenter = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          uploadDiv.children[0].innerText = 'Drop'
+      }
+      uploadDiv.ondragover = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+      }
+      uploadDiv.ondragleave = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+      }
+      document.querySelector('#files').ondragover = (e) => {
+          e.preventDefault()
+          e.stopPropagation()
+          uploadDiv.children[0].innerText = 'Drag here :<'
+      }
+      uploadDiv.ondrop = async (e) => {
+          e.stopPropagation()
+          e.preventDefault()
+          const form = new FormData()
+          const files = e.dataTransfer.files
+          if (Array.from(files).find(item => item.type === '')) {
+              uploadDiv.children[0].innerText = 'Files contain invalid file'
+              return
+          }
+          for (const file of files) {
+              form.append('files', file)
+          }
+          uploadDiv.children[0].innerText = 'Uploading'
+          const response = await fetch('http://localhost:3000/send', {
+              method: 'POST',
+              body: form
+          })
+          const parsedRespo = await response.json()
+          uploadDiv.children[0].innerText = 'Drag files here'
+          console.log(parsedRespo)
+      }
+  </script>
+  </body>
+</html>

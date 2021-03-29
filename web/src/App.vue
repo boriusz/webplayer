@@ -27,6 +27,7 @@
           :song-name="song.songName"
           :size="song.songSize"
           @songChanged="handleSongChange"
+          @setActive="setActiveSong"
         ></Song>
       </div>
     </section>
@@ -79,6 +80,7 @@ export default {
     async loadSongs(id) {
       await this.$store.dispatch("setSongList", { id });
       await this.handleSongChange({ currSongId: -1 });
+      this.setActiveSong()
     },
     async handleSongChange(data) {
       const { artist, albumName, songName } = data;
@@ -101,7 +103,10 @@ export default {
             this.currentSongTime = Math.floor(e.target.currentTime)
           };
         };
+        this.setActiveSong()
       }
+    },
+    setActiveSong() {
       const songList = this.$store.getters.getSongList;
       const currentlyPlayingSong = this.$store.getters.getCurrentlyPlayingSong
       const currSongId = songList.findIndex(
@@ -116,7 +121,7 @@ export default {
       if (currSongId !== -1) {
         this.$refs.song[currSongId].isActive = true;
       }
-    },
+    }
   },
 };
 </script>

@@ -4,139 +4,32 @@ import path, { dirname } from "path";
 import { fileURLToPath } from "url";
 import Datastore from "nedb";
 import DatabaseController from "./DatabaseController.js";
+import FileManagement from "./FileManagement.js";
+import formidable from "formidable";
 const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
-const __dirname = dirname(__filename);
+export const __dirname = dirname(__filename);
 
 const fsPromises = fs.promises;
+const form = formidable({ multiples: true });
 
 export const collection = new Datastore({
   filename: "favorites.db",
   autoload: true,
 });
 
-const defaultAlbumCover = "default-cover.png";
-
-const readDirectory = async (filePath) => {
-  const data = [];
-  const pathToDir = path.join(__dirname, "../", ...filePath);
-  const bands = await fsPromises.readdir(pathToDir);
-  for (const band of bands) {
-    const albumsList = await fsPromises.readdir(path.join(pathToDir, band));
-    const bandId = bands.findIndex((el) => el === band);
-    for (const album of albumsList) {
-      const albumId = bandId + "" + albumsList.findIndex((el) => el === album);
-      const albumDirectory = path.join(pathToDir, band, album);
-      const albumFiles = await fsPromises.readdir(albumDirectory);
-      const songs = albumFiles.filter((item) => /.mp3$/.test(item));
-      let albumCover = albumFiles.find((item) => /.png$/.test(item));
-      if (!albumCover)
-        albumCover = albumFiles.find((item) => /.jpg/.test(item));
-      const albumData = {
-        artist: band,
-        albumId: Number(albumId),
-        albumName: album,
-        songList: songs,
-        albumCover,
-      };
-      data.push(albumData);
-    }
-  }
-  return data;
-};
-
-const readImage = async (filePath) => {
-  let file;
-  try {
-    file = await fsPromises.readFile(
-      path.join(
-        __dirname,
-        "../",
-        "static",
-        "music",
-        decodeURIComponent(filePath[1]),
-        decodeURIComponent(filePath[2]),
-        decodeURIComponent(filePath[3])
-      )
-    );
-  } catch (e) {
-    file = await fsPromises.readFile(
-      path.join(__dirname, "../", "static", "default-cover.png")
-    );
-  }
-  return file;
-};
-const readFileSize = async (filePath) => {
-  const file = await fsPromises.stat(filePath);
-  return file.size;
-};
-
-const readAlbumFilesSize = async (albumsList, albumId) => {
-  const album = albumsList.find((el) => el.albumId === albumId);
-  if (!album) return null;
-  const pathToDir = path.join(
-    __dirname,
-    "../",
-    "static",
-    "music",
-    album.artist,
-    album.albumName
-  );
-  const responseData = [];
-  if (!album.songList) return null;
-  for (const song of album.songList) {
-    const stat = await fsPromises.stat(path.join(pathToDir, song));
-    const id = song.slice(0, 2);
-    responseData.push({
-      songName: song,
-      songSize: stat.size,
-      id: Number(id),
-      artist: album.artist,
-      albumName: album.albumName,
-    });
-  }
-  return responseData;
-};
-
-const readInitialData = async (filePath) => {
-  const data = [];
-  const pathToDir = path.join(__dirname, "../", ...filePath);
-  const bands = await fsPromises.readdir(pathToDir);
-  for (const band of bands) {
-    const albumsList = await fsPromises.readdir(path.join(pathToDir, band));
-    const bandId = bands.findIndex((el) => el === band);
-    for (const album of albumsList) {
-      const albumId = albumsList.findIndex((el) => el === album);
-      const finalId = bandId + "" + albumId;
-      const albumDirectory = path.join(pathToDir, band, album);
-      const albumFiles = await fsPromises.readdir(albumDirectory);
-      let albumCover = albumFiles.find((item) => /.jpg$/.test(item));
-      if (!albumCover)
-        albumCover = albumFiles.find((item) => /.png$/.test(item));
-      const albumData = {
-        artist: band,
-        albumId: Number(finalId),
-        albumName: album,
-        albumCover: albumCover ? albumCover : defaultAlbumCover,
-      };
-      data.push(albumData);
-    }
-  }
-  return data;
-};
-
 const server = http.createServer(async (req, res) => {
-  const splitUrl = req.url.split("/");
-  const lastone = splitUrl[splitUrl.length - 1];
-  if (/.png$/.test(lastone)) {
+  const { url } = req;
+  const splitUrl = decodeURIComponent(req.url).split("/");
+  if (/.png$/.test(url)) {
     res.writeHead(200, { "Content-Type": "image/png" });
-    res.write(await readImage(splitUrl));
+    res.write(await FileManagement.readImageFile(splitUrl));
     res.end();
     return;
   }
-  if (/.jpg$/.test(lastone)) {
+  if (/.jpg$/.test(url)) {
     res.writeHead(200, { "Content-Type": "image/jpeg" });
-    res.write(await readImage(splitUrl));
+    res.write(await FileManagement.readImageFile(splitUrl));
     res.end();
     return;
   }
@@ -147,7 +40,7 @@ const server = http.createServer(async (req, res) => {
   if (req.method === "GET") {
     if (req.url === "/") {
       res.writeHead(200, { "Content-Type": "application/json" });
-      const data = await readInitialData(["static", "music"]);
+      const data = await FileManagement.readInitialData(["static", "music"]);
       res.write(JSON.stringify({ data }));
       res.end();
       return;
@@ -167,7 +60,7 @@ const server = http.createServer(async (req, res) => {
               element.albumName,
               element.songName
             );
-            const fileSize = await readFileSize(pathToElem);
+            const fileSize = (await fsPromises.stat(pathToElem)).size;
             return { ...element, songSize: fileSize };
           })
         );
@@ -175,18 +68,27 @@ const server = http.createServer(async (req, res) => {
         res.end();
       });
     }
-    if (/.mp3$/.test(lastone)) {
+    if (url === "/admin") {
+      console.log("admin");
+      res.writeHead(200, { "Content-Type": "text/html" });
+      res.write(
+        await fsPromises.readFile(
+          path.join(__dirname, "../", "static", "admin.html")
+        )
+      );
+      res.end();
+      return;
+    }
+    if (/.mp3$/.test(url)) {
       const pathToFile = path.join(
         __dirname,
         "../",
         "static",
         "music",
-        decodeURIComponent(splitUrl[1]),
-        decodeURIComponent(splitUrl[2]),
-        decodeURIComponent(splitUrl[3])
+        ...splitUrl
       );
       const range = req.headers.range;
-      const fileSize = await readFileSize(pathToFile);
+      const fileSize = (await fsPromises.stat(pathToFile)).size;
 
       if (range) {
         const [first, last] = range.replace(/bytes=/, "").split("-");
@@ -206,14 +108,14 @@ const server = http.createServer(async (req, res) => {
       } else {
         res.writeHead(200, {
           "Content-Type": "audio/mpeg",
-          "Content-Length": await readFileSize(pathToFile),
+          "Content-Length": (await fsPromises.stat(pathToFile)).size,
         });
         const file = fs.createReadStream(pathToFile);
         file.pipe(res);
       }
     }
   } else if (req.method === "POST") {
-    if (req.url === "/songlist") {
+    if (url === "/songlist") {
       let clientData = [];
       let albumId;
       req.on("data", (chunk) => {
@@ -221,15 +123,21 @@ const server = http.createServer(async (req, res) => {
       });
       req.on("end", async () => {
         albumId = Number(clientData.toString());
-        const albumsList = await readDirectory(["/static", "music"]);
-        const responseData = await readAlbumFilesSize(albumsList, albumId);
+        const albumsList = await FileManagement.readDirectory([
+          "/static",
+          "music",
+        ]);
+        const responseData = await FileManagement.readAlbumFilesSize(
+          albumsList,
+          albumId
+        );
         res.writeHead(200, { "Content-Type": "application/json" });
         res.write(JSON.stringify(responseData));
         res.end();
       });
       return;
     }
-    if (req.url === "/addToFavorites") {
+    if (url === "/addToFavorites") {
       const data = [];
       req.on("data", (chunk) => data.push(chunk));
       req.on("end", () => {
@@ -241,7 +149,7 @@ const server = http.createServer(async (req, res) => {
       res.end();
       return;
     }
-    if (req.url === "/removeFromFavorities") {
+    if (url === "/removeFromFavorities") {
       const data = [];
       req.on("data", (chunk) => data.push(chunk));
       req.on("end", () => {
@@ -251,10 +159,41 @@ const server = http.createServer(async (req, res) => {
       res.writeHead(200, { "Content-Type": "application/json" });
       res.write(JSON.stringify("ok"));
       res.end();
+      return;
+    }
+    if (url === "/send") {
+      const key = Date.now().toString();
+      form.uploadDir = path.join(
+        __dirname,
+        "../",
+        "static",
+        "music",
+        "upload",
+        key
+      );
+      const dir = path.join(__dirname, "../", "static", "music", "upload", key);
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir);
+      }
+      let names = [];
+      form
+        .on("fileBegin", (_field, file) => {
+          const tempFilePath = file.path.split("\\");
+          tempFilePath[tempFilePath.length - 1] = file.name;
+          file.path = tempFilePath.join("\\");
+          names.push(file.name);
+        })
+        .parse(req, () => {
+          console.log("writing head");
+          res.writeHead(200, { "Content-Type": "application/json" });
+          res.end(JSON.stringify(names));
+        });
+      return;
     }
   } else if (req.method === "OPTIONS") {
     res.writeHead(200);
     res.end();
+    return;
   }
 });
 
