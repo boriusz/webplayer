@@ -6,6 +6,7 @@ import Datastore from "nedb";
 import DatabaseController from "./DatabaseController.js";
 import FileManagement from "./FileManagement.js";
 import formidable from "formidable";
+
 const PORT = process.env.PORT || 3000;
 const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
@@ -18,6 +19,10 @@ export const collection = new Datastore({
 });
 
 const server = http.createServer(async (req, res) => {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  res.setHeader("Access-Control-Request-Method", "*");
+  res.setHeader("Access-Control-Allow-Methods", "OPTIONS, GET, POST");
+  res.setHeader("Access-Control-Allow-Headers", "*");
   const { url } = req;
   const splitUrl = decodeURIComponent(req.url).split("/");
   if (/.png$/.test(url)) {
@@ -52,10 +57,7 @@ const server = http.createServer(async (req, res) => {
     res.end();
     return;
   }
-  res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Request-Method", "*");
-  res.setHeader("Access-Control-Allow-Methods", "OPTIONS, GET, POST");
-  res.setHeader("Access-Control-Allow-Headers", "*");
+
   if (req.method === "GET") {
     if (req.url === "/") {
       res.writeHead(200, { "Content-Type": "application/json" });
@@ -204,8 +206,7 @@ const server = http.createServer(async (req, res) => {
           file.path = tempFilePath.join("\\");
           names.push(file.name);
         })
-        .parse(req, (err, fields, files) => {
-          console.log(files);
+        .parse(req, () => {
           res.write(JSON.stringify(names));
           res.end();
         });
