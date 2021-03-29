@@ -11,7 +11,6 @@ const __filename = fileURLToPath(import.meta.url);
 export const __dirname = dirname(__filename);
 
 const fsPromises = fs.promises;
-const form = formidable({ multiples: true });
 
 export const collection = new Datastore({
   filename: "favorites.db",
@@ -22,12 +21,32 @@ const server = http.createServer(async (req, res) => {
   const { url } = req;
   const splitUrl = decodeURIComponent(req.url).split("/");
   if (/.png$/.test(url)) {
+    if (/icon/.test(url)) {
+      res.writeHead(200, { "Content-Type": "image/png" });
+      res.write(
+        await fsPromises.readFile(
+          path.join(__dirname, "../", "static", "image-icon.png")
+        )
+      );
+      res.end();
+      return;
+    }
     res.writeHead(200, { "Content-Type": "image/png" });
     res.write(await FileManagement.readImageFile(splitUrl));
     res.end();
     return;
   }
   if (/.jpg$/.test(url)) {
+    if (/icon/.test(url)) {
+      res.writeHead(200, { "Content-Type": "image/jpeg" });
+      res.write(
+        await fsPromises.readFile(
+          path.join(__dirname, "../", "static", "music-icon.jpg")
+        )
+      );
+      res.end();
+      return;
+    }
     res.writeHead(200, { "Content-Type": "image/jpeg" });
     res.write(await FileManagement.readImageFile(splitUrl));
     res.end();
@@ -162,6 +181,7 @@ const server = http.createServer(async (req, res) => {
       return;
     }
     if (url === "/send") {
+      const form = formidable({ multiples: true });
       const key = Date.now().toString();
       form.uploadDir = path.join(
         __dirname,
@@ -176,6 +196,7 @@ const server = http.createServer(async (req, res) => {
         fs.mkdirSync(dir);
       }
       let names = [];
+      res.writeHead(200, { "Content-Type": "application/json" });
       form
         .on("fileBegin", (_field, file) => {
           const tempFilePath = file.path.split("\\");
@@ -183,17 +204,15 @@ const server = http.createServer(async (req, res) => {
           file.path = tempFilePath.join("\\");
           names.push(file.name);
         })
-        .parse(req, () => {
-          console.log("writing head");
-          res.writeHead(200, { "Content-Type": "application/json" });
-          res.end(JSON.stringify(names));
+        .parse(req, (err, fields, files) => {
+          console.log(files);
+          res.write(JSON.stringify(names));
+          res.end();
         });
-      return;
     }
   } else if (req.method === "OPTIONS") {
     res.writeHead(200);
     res.end();
-    return;
   }
 });
 

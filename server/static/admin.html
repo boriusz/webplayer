@@ -35,6 +35,15 @@
           flex-direction: column;
           height: 80%;
           background: blue;
+          overflow-y: scroll;
+      }
+      .music-file, .image-file {
+          box-shadow: 1px 1px 9px gray;
+          display: flex;
+          color: tomato;
+          flex-shrink: 0;
+          height: 10%;
+          padding-left: 10px;
       }
     </style>
   </head>
@@ -47,6 +56,7 @@
     </div>
   <script>
       const uploadDiv = document.querySelector('#upload')
+      const filesDiv = document.querySelector('#files')
       uploadDiv.ondragenter = (e) => {
           e.preventDefault()
           e.stopPropagation()
@@ -84,7 +94,29 @@
           })
           const parsedRespo = await response.json()
           uploadDiv.children[0].innerText = 'Drag files here'
-          console.log(parsedRespo)
+          parsedRespo.forEach(file => {
+              if (/.png$/.test(file) || /.jpg$/.test(file)) {
+                  const fileContainer = document.createElement('div')
+                  fileContainer.className = 'image-file'
+                  const image = document.createElement('img')
+                  image.src = 'http://localhost:3000/image-icon.png'
+                  fileContainer.appendChild(image)
+                  const span = document.createElement('span')
+                  span.innerText = file.replace(/\..*/, '')
+                  fileContainer.appendChild(span)
+                filesDiv.appendChild(fileContainer)
+              } else if (/.mp3$/.test(file)) {
+                  const fileContainer = document.createElement('div')
+                  fileContainer.className = 'music-file'
+                  const image = document.createElement('img')
+                  image.src = 'http://localhost:3000/music-icon.jpg'
+                  fileContainer.appendChild(image)
+                  const span = document.createElement('span')
+                  span.innerText = file.replace(/\..*/, '')
+                  fileContainer.appendChild(span)
+                  filesDiv.appendChild(fileContainer)
+              }
+          })
       }
   </script>
   </body>
