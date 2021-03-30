@@ -58,12 +58,12 @@ export default {
       const currSongPlaying = this.$store.getters.getCurrentlyPlayingSong;
       const isPlaying = this.$store.getters.getIsPlaying;
 
-      if (isPlaying && currSongPlaying?.songName === this.songName) {
+      if (isPlaying && currSongPlaying?.songName === this.songName && currSongPlaying.albumName === this.albumName && currSongPlaying.artist === this.artist) {
         this.$store.dispatch("setIsPlaying", { isPlaying: false });
         this.audio.pause();
         return;
       }
-      if (!isPlaying && currSongPlaying?.songName === this.songName) {
+      if (!isPlaying && currSongPlaying?.songName === this.songName && currSongPlaying.albumName === this.albumName && currSongPlaying.artist === this.artist) {
         this.$store.dispatch("setIsPlaying", { isPlaying: true });
         this.audio.play();
         return;

@@ -107,20 +107,13 @@ export default {
       }
     },
     setActiveSong() {
-      const songList = this.$store.getters.getSongList;
       const currentlyPlayingSong = this.$store.getters.getCurrentlyPlayingSong
-      const currSongId = songList.findIndex(
-          (song) =>
-              song.albumName === currentlyPlayingSong.albumName &&
-              song.artist === currentlyPlayingSong.artist &&
-              song.songName === currentlyPlayingSong.songName
-      );
       this.$refs.song.forEach((song) => {
         song.isActive = false;
       });
-      if (currSongId !== -1) {
-        this.$refs.song[currSongId].isActive = true;
-      }
+      const curr = this.$refs.song.find(song => song.albumName === currentlyPlayingSong.albumName && song.songName === currentlyPlayingSong.songName && song.artist === currentlyPlayingSong.artist)
+      if (curr)
+        curr.isActive = true
     }
   },
 };
